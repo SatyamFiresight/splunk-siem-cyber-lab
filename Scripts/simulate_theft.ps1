@@ -1,32 +1,30 @@
-# simulate_filedrop.ps1
-# Simulate a suspicious file drop + a log + application event
+# simulate_theft.ps1  - safe, local simulation of file-theft activity
 # Run as Administrator inside VM.
 
-# paths
-$dropName = "suspicious_tool.exe"
-$source = "C:\Users\Public\Documents\$dropName"
-$destFolder = "C:\Windows\Temp"
-$dest = Join-Path $destFolder $dropName
-$logFile = "C:\Logs\malware_audit.log"
+# prepare paths
+$sensitive = "C:\Users\Public\Documents\sensitive_data.txt"
+$exfilFolder = "C:\exfil"                    # local "exfil" folder (no network)
+$logFile = "C:\Logs\security_audit.log"
 
 # create directories
 New-Item -ItemType Directory -Path (Split-Path $logFile) -Force | Out-Null
-New-Item -ItemType Directory -Path $destFolder -Force | Out-Null
+New-Item -ItemType Directory -Path $exfilFolder -Force | Out-Null
 
-# create dummy executable (zero-byte or small text file renamed .exe)
-"REM dummy binary for demo" | Out-File -FilePath $source -Encoding ASCII
+# create a dummy sensitive file (dummy data only)
+"Name,SSN,Account" | Out-File -FilePath $sensitive -Encoding UTF8
+"Jane Doe,000-11-2222,ACCT9999" | Out-File -FilePath $sensitive -Append -Encoding UTF8
 
-# copy to dest (simulate drop)
-Copy-Item -Path $source -Destination $dest -Force
+# simulate stealthy copy (the "theft")
+Start-Sleep -Seconds 1
+Copy-Item -Path $sensitive -Destination $exfilFolder -Force
 
-# write structured log entry
+# write structured audit log line (easy to parse in Splunk)
 $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-$entry = "$ts ALERT USER=$env:USERNAME ACTION=FILE_DROP FILE=`"$dest`" HASH=DEADBEEF TOOL=Copy"
+$entry = "$ts ALERT USER=satyam ACTION=EXFIL_COPY SRC=`"$sensitive`" DEST=`"$exfilFolder`" TOOL=PowerShell.exe"
 $entry | Out-File -FilePath $logFile -Append -Encoding UTF8
 
-# create an Application event
-if (-not [System.Diagnostics.EventLog]::SourceExists("SimMalware")) {
-    New-EventLog -LogName Application -Source "SimMalware"
+# write a Windows Application event to make it more interesting for Splunk
+if (-not [System.Diagnostics.EventLog]::SourceExists("SimTheft")){
+    New-EventLog -LogName Application -Source "SimTheft"
 }
-Write-EventLog -LogName Application -Source "SimMalware" -EntryType Warning -EventId 9100 -Message "Suspicious file dropped: $dest"
-Write-Output "Dropped $dest and logged to $logFile and Application event 9100."
+Write-EventLog -LogName Application -Source "SimTheft" -EntryType Warning -EventId 9001 -Message "Sensitive file copied to exfil folder by user satyam"
