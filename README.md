@@ -1,4 +1,4 @@
-# Splunk-SIEM-Cyber-Lab
+# Centralized Security Monitoring with Splunk
 
 ### Project Description
 This project simulates a real-world Security Operations Center (SOC) environment. It uses **Splunk Enterprise** to centralize log collection, analyze network activity, and detect simulated cyber threats. The project demonstrates a fundamental skill in cybersecurity: leveraging a Security Information and Event Management (SIEM) tool to gain visibility into system activity and identify malicious behavior.
